@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 )
@@ -25,12 +26,20 @@ func queryDmn() (bool, error) {
 	// get path to the chrome preferences file
 	chromePrefPath := "/home/" + userName + "/.config/google-chrome/Default/Preferences"
 	// read the chrome preferences file
-	chromePref, err := os.ReadFile(chromePrefPath)
+	data, err := os.ReadFile(chromePrefPath)
 	if err != nil {
 		return false, err
 	}
-	fmt.Println(string(chromePref))
-	// unmarshal the chrome preferences file
+	var chromePref ChromePref
+	// unmarshal the data into the chromePref struct
+	err = json.Unmarshal(data, &chromePref)
+	if err != nil {
+		return false, err
+	}
+	for k, v := range chromePref.Extensions.Settings {
+		fmt.Println(k)
+		fmt.Println(v)
+	}
 
 	return true, nil
 }
