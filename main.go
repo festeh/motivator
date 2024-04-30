@@ -8,12 +8,29 @@ import (
 
 type Status struct {
 	// Is Distact Me not browser extension enabled
-	DmnOn bool `json:"DmnOn"`
+	DmnOn bool  `json:"DmnOn"`
+	Error error `json:"error"`
+}
+
+// Custom marshalling for the Status struct
+func (s Status) MarshalJSON() ([]byte, error) {
+	if s.Error != nil {
+		return []byte(`{"DmnOn":false,"error":"` + s.Error.Error() + `"}`), nil
+	}
+	return []byte(`{"DmnOn":` + fmt.Sprintf("%t", s.DmnOn) + `}`), nil
+}
+
+type Extension struct {
+	Manifest struct {
+		Name string `json:"name"`
+	} `json:"manifest"`
+
+	State int `json:"state"`
 }
 
 type ChromePref struct {
 	Extensions struct {
-		Settings map[string]interface{} `json:"settings"`
+		Settings map[string]Extension `json:"settings"`
 	} `json:"extensions"`
 }
 
@@ -36,15 +53,23 @@ func queryDmn() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for k, v := range chromePref.Extensions.Settings {
-		fmt.Println(k)
-		fmt.Println(v)
+	for _, v := range chromePref.Extensions.Settings {
+		if v.Manifest.Name == "Distract Me Not" {
+			if v.State == 1 {
+				return true, nil
+			}
+			return false, nil
+		}
 	}
-
-	return true, nil
+	return false, fmt.Errorf("Distact Me Not extension not found")
 }
 
 func main() {
-	// var status = Status{IsDmnOn: false}
-	queryDmn()
+	var status = Status{DmnOn: false}
+	status.DmnOn, status.Error = queryDmn()
+	str, err := json.Marshal(status)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Stdout.Write(str)
 }
